@@ -22,9 +22,10 @@ boolean hogeState2 = false;
 boolean hogeState3 = false;
 int hane = 0;
 int hane2 = 16;
+boolean servedByPlayer = true;
 
 TimedAction hogeAction = TimedAction(250, blink); // ※1 
-TimedAction hogeAction2 = TimedAction(300, blink2); // ※1 
+TimedAction hogeAction2 = TimedAction(250, blink2); // ※1 
 TimedAction hogeAction3 = TimedAction(1250, blink3); // ※1 
 
 
@@ -42,10 +43,7 @@ void setup() {
 }
 
 void loop() {
-  hogeAction.check();
-  hogeAction2.check();
-  // hogeAction3.check();
-
+  servedByPlayer ? hogeAction.check() : hogeAction2.check();
   sensing_gyro();
 }
 
@@ -54,7 +52,10 @@ void blink(){
   lcd.setCursor(hane, 0);
   lcd.print("@");
   hane++;
-  if (hane >= 16) { hane = 0; }
+  if (hane == 16) { 
+    hane = 0; 
+    servedByPlayer=false;
+  }
 }
 
 void blink2(){
@@ -62,7 +63,10 @@ void blink2(){
   lcd.setCursor(hane2, 1);
   lcd.print("+");
   hane2--;
-  if (hane2 <= 0) { hane2 = 16; }
+  if (hane2 == 0) { 
+    hane2 = 16; 
+    servedByPlayer=true;
+  }
 }
 
 void blink3(){
