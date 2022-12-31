@@ -7,71 +7,111 @@
 // パッシブブザーで操作音を鳴らすライブラリ
 #include "pitches.h"
 
+// ジャイロセンサーとLCD利用のためのライブラリ
 #include <Wire.h>
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
-
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
 int16_t AcX;
 
-// ドレミファソラシド
-// NOTE_C5, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_G5, NOTE_A5, NOTE_B5, NOTE_C6};
+// 打ち返し音を鳴らすか?
 boolean servedSounds = true;
 
 // プレイヤーとCPUが打った羽根が飛ぶアニメーションをLCDに表示する関数
 void servedByPlayerAnimation();
 void servedByCpuAnimation();
 
-void swingAnimation();
-
 // ※1 並列処理を行うため、ライブラリのクラスからインスタンスを生成
 TimedAction playerAnimationAction = TimedAction(125, servedByPlayerAnimation); // ※1 
-TimedAction cpuAnimationAction = TimedAction(125, servedByCpuAnimation); // ※1 
+TimedAction comAnimationAction = TimedAction(125, servedByCpuAnimation); // ※1 
 
 // プレイヤーとCOMの点数
 int playerScore = 0;
 int comScore = 0;
 
-// 羽根が飛ぶアニメーション表現の為の変数
+// 羽根が飛ぶアニメーション表現のための変数
 int hane = 0;
 int hane2 = 15;
 
+// 羽子板の当たり判定を計測するための変数
 int pastGyroAngle = 0;
 int currentGyroAngle = 0;
-boolean servedByPlayer = true;
 boolean judgeSwing = false;
-boolean swung();
-int sensing_gyro();
+unsigned long previousTime = 0; // 羽根を打ってから何秒経っているかを計測する
+unsigned long adjustMoment = 0;
+boolean succeedSwing = false;
+
+// プレイヤーが打ち返し中かを判定するためのフラグ 
+boolean servedByPlayer = true;
+
+boolean isSwing();
+int sensingGyro();
 
 void setup() {
   lcd.begin(16, 2); // LCDの桁数と行数を指定(16桁2行)
   Serial.begin(9600);
-  setup_gyro();
+  setupGyro();
   // opening_title();
 }
 
 void loop() {
+  // スイングの挙動があったか?
   pastGyroAngle = currentGyroAngle;
-  currentGyroAngle = sensing_gyro();
-  judgeSwing = swung(pastGyroAngle, currentGyroAngle);
-  // Serial.println(judgeSwing);
+  currentGyroAngle = sensingGyro(); 
+  judgeSwing = isSwing(pastGyroAngle, currentGyroAngle);
+  
+  // TODO: 相手が打ってから1.4 ~ 1.9秒の間にスイング判定があれば打ち返し成功とみなす処理
+  adjustMoment = millis() - previousTime;
 
+Serial.println(adjustMoment);
+  // 打ち返し判定
+  if (judgeSwing && hitBuckable(adjustMoment)) {
+    succeedSwing = true;
+    Serial.println("Good! hit bucked!!");
+  } else {
+    succeedSwing = false;
+    Serial.println("Missed..");
+  }
+  
+  // 羽根が飛ぶアニメーション
   if (servedByPlayer) {
     playerAnimationAction.check();    
   } else {
-    cpuAnimationAction.check();
+    comAnimationAction.check();
   }
 
-  if (servedByPlayer && servedSounds)  {
-    tone(6, NOTE_C5, 100);
-    servedSounds=false;
-  } else if (servedSounds) {
-    tone(6, NOTE_C6, 100);
-    servedSounds=false;
-  }
+  // 羽根打ち返し音
+  shuttlecockSounds();
   
+  // ゲーム中LCDの2行目にスコアを表示させる
   lcd.setCursor(0, 1);
   lcd.print(" YOU "); lcd.print(playerScore); lcd.print(" -- "); lcd.print(comScore); lcd.print(" COM"); 
+}
+
+// 羽根を打ち返したときに鳴らすサウンドを関数化
+void shuttlecockSounds() {
+    if (servedByPlayer && servedSounds) {
+    // tone(6, NOTE_C5, 100);
+    servedSounds=false; // 鳴りっぱなしを防ぐために打ち返した瞬間以外はfalseにする
+  } else if (servedSounds) {
+    // tone(6, NOTE_C6, 100);
+    servedSounds=false; // 鳴りっぱなしを防ぐために打ち返した瞬間以外はfalseにする
+  }
+}
+
+// 羽子板のスイング判定。前後の値を取って±が入れ替わったらスイングしたとみなす
+boolean isSwing(int before, int after) {
+  if (before > 0 && after < 0) {
+    return true;
+  } else if (before < 0 && after > 0) {
+    return true;
+  }
+  return false;
+}
+
+// 打ち返し可能時間を判定。相手が打ってから1.4 ~ 1.9秒の間であるか?
+boolean hitBuckable(unsigned long adjust_moment) {
+  adjust_moment >= 1400 && adjust_moment <= 1900
 }
 
 void servedByPlayerAnimation(){
@@ -85,10 +125,9 @@ void servedByPlayerAnimation(){
     servedSounds=true;
     playerScore++;
 
-    Serial.println(playerScore);
-
     ending_title(playerScore, comScore);
   }
+  previousTime = millis() - previousTime;
 }
 
 void servedByCpuAnimation(){
@@ -101,9 +140,10 @@ void servedByCpuAnimation(){
     servedByPlayer=true;
     servedSounds=true;
     comScore++;
-
+    
     ending_title(playerScore, comScore);
   }
+  previousTime = millis(); // COMが打ち返した時刻を記録
 }
 
 void opening_title() {
@@ -122,22 +162,18 @@ void ending_title(int player_score, int com_score) {
   lcd.setCursor(0, 1);
   lcd.print(" YOU "); lcd.print(playerScore); lcd.print(" -- "); lcd.print(comScore); lcd.print(" COM"); 
 
-  // FIXME: スコアが3になった瞬間にTrueせる
-
-  if (player_score == 3) {
+  // FIXME: スコアが3になった瞬間にTrueにする
+  if (player_score == 100) {
     delay(3000);
+    lcd.clear();
     lcd.setCursor(0, 1);
     lcd.print("   YOU WIN!!!");
     delay(99999999); // delayで止めてゲーム終了
-  } else {
-    delay(3000);
-    lcd.setCursor(0, 1);
-    lcd.print("  YOU LOSE...");
-    delay(99999999); // delayで止めてゲーム終了
-  }
+  } 
 }
 
-void setup_gyro() {
+// ジャイロセンサー使用の為の初期セットアップ
+void setupGyro() {
   Wire.begin();
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x6B);  // PWR_MGMT_1 register
@@ -145,8 +181,8 @@ void setup_gyro() {
   Wire.endTransmission(true);
 }
 
-// ジャイロセンサーに必要な処理を関数化
-int sensing_gyro() {
+// ジャイロセンサー(羽子板の動き)を計測する処理を関数化
+int sensingGyro() {
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
   Wire.endTransmission(false);
@@ -155,13 +191,4 @@ int sensing_gyro() {
   // Serial.print("AcX = "); Serial.println(AcX);
 
   return AcX;
-}
-
-boolean swung(int before, int after) {
-  if (before > 0 && after < 0) {
-    return true;
-  } else if (before < 0 && after > 0) {
-    return true;
-  }
-  return false;
 }
