@@ -52,7 +52,7 @@ void setup() {
   lcd.begin(16, 2); // LCDの桁数と行数を指定(16桁2行)
   Serial.begin(9600);
   setupGyro();
-  // opening_title(); // オープニングタイトル表示処理
+  opening_title(); // オープニングタイトル表示処理
 }
 
 void loop() {
@@ -73,21 +73,22 @@ void loop() {
   } 
   // エンディング処理ここまで
 
+
   // スイングの挙動があったか?
   pastGyroAngle = currentGyroAngle;
   currentGyroAngle = sensingGyro(); 
   judgeSwing = isSwing(pastGyroAngle, currentGyroAngle);
   
-  // COMが打ってからの秒数を計測
-  // adjustMoment = millis() - previousTime;
   Serial.print(judgeSwing); Serial.print("  "); Serial.println(adjustMoment);
   
   // COMからの打球を打ち返せるかの判定
   if (!servedByPlayer) {
+    
+    // COMが打ってからの秒数を計測
     adjustMoment = millis() - previousTime;
 
-    // 相手が打ってから1.3~1.99秒の間にスイング判定があれば打ち返し成功とみなす処理
-    if (judgeSwing && (adjustMoment >= 1300 && adjustMoment <= 1999)) {
+    // COMが打ってから1.6~1.99秒の間にPlayerのスイング判定があれば、打ち返し成功とみなす処理
+    if (judgeSwing && (adjustMoment >= 1600 && adjustMoment <= 1990)) {
       succeedSwing = true;
       Serial.println("Good! hit bucked!!");
     }
@@ -95,10 +96,8 @@ void loop() {
   
   // 羽根が飛ぶアニメーション
   if (servedByPlayer) {
-    Serial.println("player turn");
     playerAnimationAction.check();
   } else {
-    Serial.println("com turn");
     comAnimationAction.check();
   }
 
@@ -116,6 +115,15 @@ void servedByPlayerAnimation(){
   lcd.print(">");
   hane++;
 
+  // COMがスイングミスした時の処理。ランダムに発生させる
+  if (hane == 16 && (millis() % 3 == 0)) {
+    playerScore++;
+    hane = 0; 
+    succeedSwing = false;
+    delay(3000);
+    return;
+  }
+
   if (hane == 16) { 
     hane = 0; 
     servedByPlayer = false;
@@ -132,6 +140,7 @@ void servedByCpuAnimation(){
   lcd.print("<");
   hane2--;
 
+  // Playerがスイングミスした時の処理
   if (hane2 == -1 && !succeedSwing) {
     comScore++;
     hane2 = 15;
@@ -150,10 +159,10 @@ void servedByCpuAnimation(){
 // 羽根を打ち返したときに鳴らすサウンドを関数化
 void shuttlecockSounds() {
     if (servedByPlayer && servedSounds) {
-    // tone(6, NOTE_C5, 100);
+    tone(6, NOTE_C5, 100);
     servedSounds = false; // 鳴りっぱなしを防ぐために打ち返した瞬間以外はfalseにする
   } else if (servedSounds) {
-    // tone(6, NOTE_C6, 100);
+    tone(6, NOTE_C6, 100);
     servedSounds = false; // 鳴りっぱなしを防ぐために打ち返した瞬間以外はfalseにする
   }
 }
