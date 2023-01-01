@@ -73,17 +73,17 @@ void loop() {
   // エンディング処理ここまで
 
 
-  // スイングの挙動があったか?
+  // スイングの挙動があったか? を判定する為にジャイロセンサーの値を格納
   pastGyroAngle = currentGyroAngle;
   currentGyroAngle = sensingGyro(); 
   judgeSwing = isSwing(pastGyroAngle, currentGyroAngle);
   
   Serial.print(judgeSwing); Serial.print("  "); Serial.println(adjustMoment);
   
-  // COMからの打球を打ち返せるかの判定
+  // 以下COMからの打球を打ち返せるかの判定
   if (!servedByPlayer) {
     
-    // COMが打ってからの秒数を計測
+    // COMが打ってから経過した秒数を計測
     adjustMoment = millis() - previousTime;
 
     // COMが打ってから1.6~1.99秒の間にPlayerのスイング判定があれば、打ち返し成功とみなす処理
