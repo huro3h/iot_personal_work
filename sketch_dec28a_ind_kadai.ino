@@ -24,17 +24,16 @@ void servedByCpuAnimation();
 // ※1 並列処理を行うため、ライブラリのクラスからインスタンスを生成
 TimedAction playerAnimationAction = TimedAction(125, servedByPlayerAnimation); // ※1 
 TimedAction comAnimationAction = TimedAction(125, servedByCpuAnimation); // ※1 
-// TimedAction comSwungDurationAction = TimedAction(10, servedByComDuration); // ※1 
 
 // プレイヤーとCOMの点数
 int playerScore = 0;
 int comScore = 0;
 
 // 羽根が飛ぶアニメーション表現のための変数
-int hane = 0;
-int hane2 = 15;
+int playerShuttlecockPosition = 0;
+int comShuttlecockPosition = 15;
 
-// 羽子板の当たり判定を計測するための変数
+// 羽子板の当たり判定を計測するための変数群
 int pastGyroAngle = 0;
 int currentGyroAngle = 0;
 boolean judgeSwing = false;
@@ -90,7 +89,7 @@ void loop() {
     // COMが打ってから1.6~1.99秒の間にPlayerのスイング判定があれば、打ち返し成功とみなす処理
     if (judgeSwing && (adjustMoment >= 1600 && adjustMoment <= 1990)) {
       succeedSwing = true;
-      Serial.println("Good! hit bucked!!");
+      Serial.println("Good! Hit bucked!!");
     }
   }
   
@@ -111,21 +110,21 @@ void loop() {
 
 void servedByPlayerAnimation(){
   lcd.clear();
-  lcd.setCursor(hane, 0);
+  lcd.setCursor(playerShuttlecockPosition, 0);
   lcd.print(">");
-  hane++;
+  playerShuttlecockPosition++;
 
   // COMがスイングミスした時の処理。ランダムに発生させる
-  if (hane == 16 && (millis() % 3 == 0)) {
+  if (playerShuttlecockPosition == 16 && (millis() % 7 == 0)) {
     playerScore++;
-    hane = 0; 
+    playerShuttlecockPosition = 0; 
     succeedSwing = false;
     delay(3000);
     return;
   }
 
-  if (hane == 16) { 
-    hane = 0; 
+  if (playerShuttlecockPosition == 16) { 
+    playerShuttlecockPosition = 0; 
     servedByPlayer = false;
     servedSounds = true;
     succeedSwing = false;
@@ -136,21 +135,21 @@ void servedByPlayerAnimation(){
 
 void servedByCpuAnimation(){
   lcd.clear();
-  lcd.setCursor(hane2, 0);
+  lcd.setCursor(comShuttlecockPosition, 0);
   lcd.print("<");
-  hane2--;
+  comShuttlecockPosition--;
 
   // Playerがスイングミスした時の処理
-  if (hane2 == -1 && !succeedSwing) {
+  if (comShuttlecockPosition == -1 && !succeedSwing) {
     comScore++;
-    hane2 = 15;
+    comShuttlecockPosition = 15;
     servedByPlayer = true;
     delay(3000);
     return;
   }
 
-  if (hane2 == -1) { 
-    hane2 = 15; 
+  if (comShuttlecockPosition == -1) { 
+    comShuttlecockPosition = 15; 
     servedByPlayer = true;
     servedSounds = true;
   }
