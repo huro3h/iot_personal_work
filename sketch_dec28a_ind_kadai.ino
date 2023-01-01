@@ -39,7 +39,7 @@ int currentGyroAngle = 0;
 boolean judgeSwing = false;
 unsigned long previousTime = 0; // 羽根を打ってから何秒経っているかを計測する
 unsigned long adjustMoment = 0;
-boolean succeedSwing = false;
+boolean succeedSwing = true; // 打ち返しに成功したかを確認するフラグ
 
 // プレイヤーが打ち返し中かを判定するためのフラグ 
 boolean servedByPlayer = true;
@@ -51,31 +51,55 @@ void setup() {
   lcd.begin(16, 2); // LCDの桁数と行数を指定(16桁2行)
   Serial.begin(9600);
   setupGyro();
-  // opening_title();
+  // opening_title(); // オープニングタイトル表示処理
 }
 
 void loop() {
+  // エンディング処理。プレイヤーまたはCOMが3点取ったらゲーム終了
+  if (playerScore > 2) {
+    delay(3000);
+    lcd.clear();
+    lcd.setCursor(0, 1);
+    lcd.print("   YOU WIN!!!");
+    delay(999999999); // delayで止めてゲーム終了
+  } 
+  if (comScore > 2) {
+    delay(3000);
+    lcd.clear();
+    lcd.setCursor(0, 1);
+    lcd.print("  YOU LOSE...");
+    delay(999999999); // delayで止めてゲーム終了
+  } 
+  // エンディング処理ここまで
+
+  firstServe:
+
   // スイングの挙動があったか?
   pastGyroAngle = currentGyroAngle;
   currentGyroAngle = sensingGyro(); 
   judgeSwing = isSwing(pastGyroAngle, currentGyroAngle);
   
-  // TODO: 相手が打ってから1.4 ~ 1.9秒の間にスイング判定があれば打ち返し成功とみなす処理
+  // COMが打ってからの秒数を計測
   adjustMoment = millis() - previousTime;
-
-Serial.println(adjustMoment);
-  // 打ち返し判定
-  if (judgeSwing && hitBuckable(adjustMoment)) {
-    succeedSwing = true;
-    Serial.println("Good! hit bucked!!");
-  } else {
-    succeedSwing = false;
-    Serial.println("Missed..");
+  Serial.print(judgeSwing); Serial.print("  "); Serial.println(adjustMoment);
+  
+  // COMからの打球を打ち返せるかの判定
+  if (!servedByPlayer) {
+    // 相手が打ってから1.4~1.9秒の間にスイング判定があれば打ち返し成功とみなす処理
+    if (judgeSwing && (adjustMoment >= 1400 && adjustMoment <= 1900)) {
+      succeedSwing = true;
+      Serial.println("Good! hit bucked!!");
+    } else {
+      // comScore++;
+      // delay(1000); 
+      // servedByPlayer = true;
+      // goto firstServe;
+    }
   }
   
   // 羽根が飛ぶアニメーション
   if (servedByPlayer) {
-    playerAnimationAction.check();    
+    playerAnimationAction.check();
   } else {
     comAnimationAction.check();
   }
@@ -92,10 +116,10 @@ Serial.println(adjustMoment);
 void shuttlecockSounds() {
     if (servedByPlayer && servedSounds) {
     // tone(6, NOTE_C5, 100);
-    servedSounds=false; // 鳴りっぱなしを防ぐために打ち返した瞬間以外はfalseにする
+    servedSounds = false; // 鳴りっぱなしを防ぐために打ち返した瞬間以外はfalseにする
   } else if (servedSounds) {
     // tone(6, NOTE_C6, 100);
-    servedSounds=false; // 鳴りっぱなしを防ぐために打ち返した瞬間以外はfalseにする
+    servedSounds = false; // 鳴りっぱなしを防ぐために打ち返した瞬間以外はfalseにする
   }
 }
 
@@ -109,11 +133,6 @@ boolean isSwing(int before, int after) {
   return false;
 }
 
-// 打ち返し可能時間を判定。相手が打ってから1.4 ~ 1.9秒の間であるか?
-boolean hitBuckable(unsigned long adjust_moment) {
-  adjust_moment >= 1400 && adjust_moment <= 1900
-}
-
 void servedByPlayerAnimation(){
   lcd.clear();
   lcd.setCursor(hane, 0);
@@ -121,13 +140,11 @@ void servedByPlayerAnimation(){
   hane++;
   if (hane == 16) { 
     hane = 0; 
-    servedByPlayer=false;
-    servedSounds=true;
-    playerScore++;
-
-    ending_title(playerScore, comScore);
+    servedByPlayer = false;
+    servedSounds = true;
+    // succeedSwing = false;
   }
-  previousTime = millis() - previousTime;
+  previousTime = millis(); // COMが打ち返した時刻を記録
 }
 
 void servedByCpuAnimation(){
@@ -137,13 +154,9 @@ void servedByCpuAnimation(){
   hane2--;
   if (hane2 == -1) { 
     hane2 = 15; 
-    servedByPlayer=true;
-    servedSounds=true;
-    comScore++;
-    
-    ending_title(playerScore, comScore);
+    servedByPlayer = true;
+    servedSounds = true;
   }
-  previousTime = millis(); // COMが打ち返した時刻を記録
 }
 
 void opening_title() {
@@ -152,24 +165,6 @@ void opening_title() {
   lcd.setCursor(0, 1);
   lcd.print("  GAME START!");
   delay(2000);
-}
-
-void ending_title(int player_score, int com_score) {
-  if (player_score < 3 || com_score < 3) {
-    return;
-  }
-
-  lcd.setCursor(0, 1);
-  lcd.print(" YOU "); lcd.print(playerScore); lcd.print(" -- "); lcd.print(comScore); lcd.print(" COM"); 
-
-  // FIXME: スコアが3になった瞬間にTrueにする
-  if (player_score == 100) {
-    delay(3000);
-    lcd.clear();
-    lcd.setCursor(0, 1);
-    lcd.print("   YOU WIN!!!");
-    delay(99999999); // delayで止めてゲーム終了
-  } 
 }
 
 // ジャイロセンサー使用の為の初期セットアップ
