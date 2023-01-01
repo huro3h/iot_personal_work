@@ -14,7 +14,7 @@ LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
 int16_t AcX;
 
-// 打ち返し音を鳴らすか?
+// 打ち返し音を一瞬だけ鳴らすための変数
 boolean servedSounds = true;
 
 // プレイヤーとCPUが打った羽根が飛ぶアニメーションをLCDに表示する関数
@@ -24,6 +24,7 @@ void servedByCpuAnimation();
 // ※1 並列処理を行うため、ライブラリのクラスからインスタンスを生成
 TimedAction playerAnimationAction = TimedAction(125, servedByPlayerAnimation); // ※1 
 TimedAction comAnimationAction = TimedAction(125, servedByCpuAnimation); // ※1 
+// TimedAction comSwungDurationAction = TimedAction(10, servedByComDuration); // ※1 
 
 // プレイヤーとCOMの点数
 int playerScore = 0;
@@ -72,35 +73,32 @@ void loop() {
   } 
   // エンディング処理ここまで
 
-  firstServe:
-
   // スイングの挙動があったか?
   pastGyroAngle = currentGyroAngle;
   currentGyroAngle = sensingGyro(); 
   judgeSwing = isSwing(pastGyroAngle, currentGyroAngle);
   
   // COMが打ってからの秒数を計測
-  adjustMoment = millis() - previousTime;
+  // adjustMoment = millis() - previousTime;
   Serial.print(judgeSwing); Serial.print("  "); Serial.println(adjustMoment);
   
   // COMからの打球を打ち返せるかの判定
   if (!servedByPlayer) {
-    // 相手が打ってから1.4~1.9秒の間にスイング判定があれば打ち返し成功とみなす処理
-    if (judgeSwing && (adjustMoment >= 1400 && adjustMoment <= 1900)) {
+    adjustMoment = millis() - previousTime;
+
+    // 相手が打ってから1.3~1.99秒の間にスイング判定があれば打ち返し成功とみなす処理
+    if (judgeSwing && (adjustMoment >= 1300 && adjustMoment <= 1999)) {
       succeedSwing = true;
       Serial.println("Good! hit bucked!!");
-    } else {
-      // comScore++;
-      // delay(1000); 
-      // servedByPlayer = true;
-      // goto firstServe;
     }
   }
   
   // 羽根が飛ぶアニメーション
   if (servedByPlayer) {
+    Serial.println("player turn");
     playerAnimationAction.check();
   } else {
+    Serial.println("com turn");
     comAnimationAction.check();
   }
 
@@ -110,6 +108,43 @@ void loop() {
   // ゲーム中LCDの2行目にスコアを表示させる
   lcd.setCursor(0, 1);
   lcd.print(" YOU "); lcd.print(playerScore); lcd.print(" -- "); lcd.print(comScore); lcd.print(" COM"); 
+}
+
+void servedByPlayerAnimation(){
+  lcd.clear();
+  lcd.setCursor(hane, 0);
+  lcd.print(">");
+  hane++;
+
+  if (hane == 16) { 
+    hane = 0; 
+    servedByPlayer = false;
+    servedSounds = true;
+    succeedSwing = false;
+  }
+
+  previousTime = millis();
+}
+
+void servedByCpuAnimation(){
+  lcd.clear();
+  lcd.setCursor(hane2, 0);
+  lcd.print("<");
+  hane2--;
+
+  if (hane2 == -1 && !succeedSwing) {
+    comScore++;
+    hane2 = 15;
+    servedByPlayer = true;
+    delay(3000);
+    return;
+  }
+
+  if (hane2 == -1) { 
+    hane2 = 15; 
+    servedByPlayer = true;
+    servedSounds = true;
+  }
 }
 
 // 羽根を打ち返したときに鳴らすサウンドを関数化
@@ -131,32 +166,6 @@ boolean isSwing(int before, int after) {
     return true;
   }
   return false;
-}
-
-void servedByPlayerAnimation(){
-  lcd.clear();
-  lcd.setCursor(hane, 0);
-  lcd.print(">");
-  hane++;
-  if (hane == 16) { 
-    hane = 0; 
-    servedByPlayer = false;
-    servedSounds = true;
-    // succeedSwing = false;
-  }
-  previousTime = millis(); // COMが打ち返した時刻を記録
-}
-
-void servedByCpuAnimation(){
-  lcd.clear();
-  lcd.setCursor(hane2, 0);
-  lcd.print("<");
-  hane2--;
-  if (hane2 == -1) { 
-    hane2 = 15; 
-    servedByPlayer = true;
-    servedSounds = true;
-  }
 }
 
 void opening_title() {
