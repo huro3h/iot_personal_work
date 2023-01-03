@@ -12,7 +12,7 @@
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 const int MPU_addr=0x68;  // I2C address of the MPU-6050
-int16_t AcX;
+int16_t AcX,AcY,AcZ;
 
 // 打ち返し音を一瞬だけ鳴らすための変数
 boolean servedSounds = true;
@@ -78,7 +78,7 @@ void loop() {
   currentGyroAngle = sensingGyro(); 
   judgeSwing = isSwing(pastGyroAngle, currentGyroAngle);
   
-  Serial.print(judgeSwing); Serial.print("  "); Serial.println(adjustMoment);
+  // Serial.print(judgeSwing); Serial.print("  "); Serial.println(adjustMoment);
   
   // 以下COMからの打球を打ち返せるかの判定
   if (!servedByPlayer) {
@@ -115,7 +115,7 @@ void servedByPlayerAnimation(){
   playerShuttlecockPosition++;
 
   // COMがスイングミスした時の処理。ランダムに発生させる
-  if (playerShuttlecockPosition == 16 && (millis() % 7 == 0)) {
+  if (playerShuttlecockPosition == 16 && (millis() % 2 == 0)) {
     playerScore++;
     playerShuttlecockPosition = 0; 
     succeedSwing = false;
@@ -167,10 +167,13 @@ void shuttlecockSounds() {
 }
 
 // 羽子板のスイング判定。前後の値を取って±が入れ替わったらスイングしたとみなす
+// 判定を少しゆるくするため±入れ替えに加えて、前後の値の差が1000以上あったらスイングしたとみなす
 boolean isSwing(int before, int after) {
   if (before > 0 && after < 0) {
     return true;
   } else if (before < 0 && after > 0) {
+    return true;
+  } else if ((before * 2 / 2) - (after * 2 / 2) > 1000) {
     return true;
   }
   return false;
@@ -181,7 +184,7 @@ void opening_title() {
   lcd.print(" THE HANETSUKI");
   lcd.setCursor(0, 1);
   lcd.print("  GAME START!");
-  delay(2000);
+  delay(3000);
 }
 
 // ジャイロセンサー使用の為の初期セットアップ
@@ -199,8 +202,19 @@ int sensingGyro() {
   Wire.write(0x3B);  // starting with register 0x3B (ACCEL_XOUT_H)
   Wire.endTransmission(false);
   Wire.requestFrom(MPU_addr,14,true); 
-  AcX=Wire.read()<<8|Wire.read();
-  // Serial.print("AcX = "); Serial.println(AcX);
+  // AcX=Wire.read()<<8|Wire.read();
+  // AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
+  AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
+  // GyX=Wire.read()<<8|Wire.read();  // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
+  // GyY=Wire.read()<<8|Wire.read();  // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
+  // GyZ=Wire.read()<<8|Wire.read();  // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
 
-  return AcX;
+  // Serial.print("AcX = "); Serial.print(AcX);
+  // Serial.print(" | AcY = "); Serial.print(AcY);
+  Serial.print(" | AcZ = "); Serial.println(AcZ);
+  // Serial.print(" | GyX = "); Serial.print(GyX);
+  // Serial.print(" | GyY = "); Serial.print(GyY);
+  // Serial.print(" | GyZ = "); Serial.println(GyZ);
+
+  return AcZ;
 }
