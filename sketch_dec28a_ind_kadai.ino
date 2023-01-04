@@ -38,11 +38,10 @@ int pastGyroAngle = 0;
 int currentGyroAngle = 0;
 boolean judgeSwing = false;
 unsigned long previousTime = 0; // 羽根を打ってから何秒経っているかを計測する
-unsigned long adjustMoment = 0;
+unsigned long adjustMoment = 0; // COMが打ってから経過した秒数(ミリセカンド)
 boolean succeedSwing = true; // 打ち返しに成功したかを確認するフラグ
 
-// プレイヤーが打ち返し中かを判定するためのフラグ 
-boolean servedByPlayer = true;
+boolean servedByPlayer = true; // プレイヤーが打ち返し中かを判定するためのフラグ 
 
 boolean isSwing();
 int sensingGyro();
@@ -114,8 +113,8 @@ void servedByPlayerAnimation(){
   lcd.print(">");
   playerShuttlecockPosition++;
 
-  // COMがスイングミスした時の処理。ランダムに発生させる
-  if (playerShuttlecockPosition == 16 && (millis() % 2 == 0)) {
+  // COMがスイングミスした時の処理、ランダムに発生させる。ランダム要素: millis()で取得した値が割り切れたらミス判定
+  if (playerShuttlecockPosition == 16 && (millis() % 7 == 0)) {
     playerScore++;
     playerShuttlecockPosition = 0; 
     succeedSwing = false;
@@ -205,16 +204,11 @@ int sensingGyro() {
   // AcX=Wire.read()<<8|Wire.read();
   // AcY=Wire.read()<<8|Wire.read();  // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
   AcZ=Wire.read()<<8|Wire.read();  // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
-  // GyX=Wire.read()<<8|Wire.read();  // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
-  // GyY=Wire.read()<<8|Wire.read();  // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
-  // GyZ=Wire.read()<<8|Wire.read();  // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
+
 
   // Serial.print("AcX = "); Serial.print(AcX);
   // Serial.print(" | AcY = "); Serial.print(AcY);
   Serial.print(" | AcZ = "); Serial.println(AcZ);
-  // Serial.print(" | GyX = "); Serial.print(GyX);
-  // Serial.print(" | GyY = "); Serial.print(GyY);
-  // Serial.print(" | GyZ = "); Serial.println(GyZ);
-
+  
   return AcZ;
 }
