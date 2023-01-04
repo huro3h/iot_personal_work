@@ -172,7 +172,7 @@ boolean isSwing(int before, int after) {
     return true;
   } else if (before < 0 && after > 0) {
     return true;
-  } else if ((before * 2 / 2) - (after * 2 / 2) > 1000) {
+  } else if ((before * 2 / 2) - (after * 2 / 2) > 1000) { // 測定値の±を考慮しない
     return true;
   }
   return false;
@@ -209,6 +209,6 @@ int sensingGyro() {
   // Serial.print("AcX = "); Serial.print(AcX);
   // Serial.print(" | AcY = "); Serial.print(AcY);
   Serial.print(" | AcZ = "); Serial.println(AcZ);
-  
+
   return AcZ;
 }
