@@ -129,7 +129,7 @@ void servedByPlayerAnimation(){
     succeedSwing = false;
   }
 
-  previousTime = millis();
+  previousTime = millis(); // COMが打ち返しに成功: COMが打ち返してからの秒数を計測する為、打ち返し成功時刻を記録して変数で持っておく
 }
 
 void servedByCpuAnimation(){
