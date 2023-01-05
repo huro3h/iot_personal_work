@@ -1,7 +1,11 @@
-// Arduino Unoに使用されているAVRはシングルスレッドのため、x86CPUのようなマルチスレッド処理はできないので
-// 内部にステートを持ったクラスとライブラリを用いて擬似的に並列処理を表現する
+// Arduino Unoに使用されているAVRはシングルスレッドで、x86CPUのようなマルチスレッド処理はできないため
+// 内部にステートを持ったクラスとライブラリを用いて擬似的に並列処理を表現する(プロトスレッド)
 // Arduino Playground - TimedAction Library
 // https://playground.arduino.cc/Code/TimedAction/
+//
+// e.g. arduinoで並列処理(ノンプリエンプティブ) - Qiita
+// https://qiita.com/bunnyhopper_isolated/items/d4cf96895d665f5401af
+
 #include <TimedAction.h>
 
 // パッシブブザーで操作音を鳴らすライブラリ
